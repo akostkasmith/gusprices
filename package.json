@@ -11,6 +11,7 @@
   "description": "A tool to provide gas prices for litres CAD from gallons USD",
   "dependencies": {
     "joi": "^14.3.1",
-    "mongoose": "^5.5.1"
+    "mongoose": "^5.5.1",
+    "request": "^2.88.0"
   }
 }

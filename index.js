@@ -2,6 +2,7 @@ const express = require('express');
 const app = express();
 const mongoose = require('mongoose');
 const Joi = require('joi');
+const convert = require('./convert');
 
 var mongoDatabase = process.env.mongoDatabase;
 
@@ -23,8 +24,6 @@ var gasPricesSchema = new mongoose.Schema({
 var gasPrice = mongoose.model('gasPrice', gasPricesSchema);
 
 
-
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -32,7 +31,7 @@ app.get('/getprice/:price/exchange/:exchange', (req, res) => {
   const usPrice = req.params.price;
   const exchange = req.params.exchange;
   
-  const price = usdToCad(usPrice, exchange);
+  const price = convert.USDtoCAD(usPrice, exchange);
   const canPrice = {
     "price" : price,
     "exchange" : exchange,
@@ -46,7 +45,7 @@ app.post('/', (req, res) => {
   const schema = {
     usdPrice: Joi.required(),
     cadPrice: Joi.required(),
-    exchange: Joi.required(),
+    // exchange: Joi.required(),
     date: Joi.date()
   };  
 
@@ -60,13 +59,13 @@ app.post('/', (req, res) => {
     exchange: req.body.exchange
   });
 
-  console.log(newPrice);
+  //console.log(newPrice);
 
   newPrice.save(function(err, price) {
     if (err) return console.error(err);
     console.log(price.usdPrice + " saved to prices");
   });
-  const price = usdToCad(req.body.usdPrice, req.body.exchange);
+  const price = convert.USDtoCAD(req.body.usdPrice, req.body.exchange);
 
   const canPrice = {
     "price" : price,
@@ -77,8 +76,3 @@ app.post('/', (req, res) => {
 
 app.listen('8080');
 
-function usdToCad(usPrice, exchange) {
-  const litres = usPrice / 3.79;
-  const price = litres / exchange;
-  return price;
-}
