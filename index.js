@@ -3,6 +3,7 @@ const app = express();
 const mongoose = require('mongoose');
 const Joi = require('joi');
 const convert = require('./convert');
+const request = require('request');
 
 var mongoDatabase = process.env.mongoDatabase;
 
@@ -52,11 +53,18 @@ app.post('/', (req, res) => {
   const result = Joi.validate(req.body, schema);
 
   if (result.error) return res.status(400).send(result.error.details[0].message);
- 
+
+  if (typeof req.body.exchange !== 'undefined') {
+   // const exchange = getUpdatedRates();
+  } else {
+   // const exchange = req.body.exchange;
+  }
+  const exchange = getUpdatedRates();
+
   const newPrice = new gasPrice({
     usdPrice: req.body.usdPrice,
     cadPrice: req.body.cadPrice,
-    exchange: req.body.exchange
+    exchange: exchange
   });
 
   //console.log(newPrice);
@@ -65,14 +73,24 @@ app.post('/', (req, res) => {
     if (err) return console.error(err);
     console.log(price.usdPrice + " saved to prices");
   });
-  const price = convert.USDtoCAD(req.body.usdPrice, req.body.exchange);
+  const price = convert.USDtoCAD(req.body.usdPrice, exchange);
 
   const canPrice = {
     "price" : price,
-    "exchange" : req.body.exchange,
+    "exchange" : exchange,
   };
   res.json(canPrice);
 });
 
 app.listen('8080');
 
+function getUpdatedRates() {
+  request('https://api.exchangeratesapi.io/latest?base=CAD&symbols=USD', (err, res, body) => {
+    if (!err && res.statusCode == 200) {
+      const rate = JSON.parse(body);
+      return rate.rates.USD;
+    } else {
+      return false;
+    }
+  });
+}
