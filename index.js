@@ -3,7 +3,7 @@ const app = express();
 const mongoose = require('mongoose');
 const Joi = require('joi');
 const convert = require('./convert');
-const request = require('request');
+const request = require('request-promise');
 
 var mongoDatabase = process.env.mongoDatabase;
 
@@ -25,20 +25,42 @@ var gasPricesSchema = new mongoose.Schema({
 var gasPrice = mongoose.model('gasPrice', gasPricesSchema);
 
 
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.get('/getprice/:price/exchange/:exchange', (req, res) => {
-  const usPrice = req.params.price;
-  const exchange = req.params.exchange;
+app.get('/', (req, res) => {
   
-  const price = convert.USDtoCAD(usPrice, exchange);
-  const canPrice = {
-    "price" : price,
-    "exchange" : exchange,
-  };
+  request('https://afpi.exchangeratesapi.io/latest?base=CAD&symbols=USD')
+  .then((result)=>{  
+    
+    const resultJSON = JSON.parse(result);  
+    exchange = resultJSON.rates.USD;
+    return Promise.resolve(exchange);
 
-  res.json(canPrice);
+  })
+  .then((result) => {  
+   
+    const usPrice = req.query.price;
+
+    if (req.query.exchange !== '') {
+      var currentExchange = req.query.exchange;
+    } else {
+      var currentExchange = result;
+    }
+
+    const price = convert.USDtoCAD(usPrice, currentExchange);
+    const canPrice = {
+      "price" : price,
+      "exchange" : currentExchange,
+    };
+    res.status(200).json(canPrice);
+
+  }).catch((error) => {
+    res.status(400).send('Nope');
+    
+  });
+
 });
 
 app.post('/', (req, res) => {
@@ -49,48 +71,32 @@ app.post('/', (req, res) => {
     // exchange: Joi.required(),
     date: Joi.date()
   };  
-
+ 
   const result = Joi.validate(req.body, schema);
 
   if (result.error) return res.status(400).send(result.error.details[0].message);
-
-  if (typeof req.body.exchange !== 'undefined') {
-   // const exchange = getUpdatedRates();
-  } else {
-   // const exchange = req.body.exchange;
-  }
-  const exchange = getUpdatedRates();
+ 
+  let exchange = req.body.exchange;
 
   const newPrice = new gasPrice({
     usdPrice: req.body.usdPrice,
     cadPrice: req.body.cadPrice,
-    exchange: exchange
+    exchange: req.body.exchange
   });
 
-  //console.log(newPrice);
 
   newPrice.save(function(err, price) {
     if (err) return console.error(err);
     console.log(price.usdPrice + " saved to prices");
   });
-  const price = convert.USDtoCAD(req.body.usdPrice, exchange);
+  const price = convert.USDtoCAD(req.body.usdPrice, req.body.exchange);
 
   const canPrice = {
     "price" : price,
-    "exchange" : exchange,
+    "exchange" : req.body.exchange,
   };
   res.json(canPrice);
 });
 
 app.listen('8080');
 
-function getUpdatedRates() {
-  request('https://api.exchangeratesapi.io/latest?base=CAD&symbols=USD', (err, res, body) => {
-    if (!err && res.statusCode == 200) {
-      const rate = JSON.parse(body);
-      return rate.rates.USD;
-    } else {
-      return false;
-    }
-  });
-}
