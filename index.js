@@ -31,7 +31,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.get('/', (req, res) => {
   
-  request('https://afpi.exchangeratesapi.io/latest?base=CAD&symbols=USD')
+  request('https://api.exchangeratesapi.io/latest?base=CAD&symbols=USD')
   .then((result)=>{  
     
     const resultJSON = JSON.parse(result);  
@@ -57,8 +57,9 @@ app.get('/', (req, res) => {
     res.status(200).json(canPrice);
 
   }).catch((error) => {
+
     res.status(400).send('Nope');
-    
+
   });
 
 });
